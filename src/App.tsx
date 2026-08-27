@@ -267,7 +267,7 @@ function ChartTip({ active, payload, label }: { active?: boolean; payload?: { va
 
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
-function Sidebar({ view, onView, dark, toggleDark, backup, restore }: { view: View; onView: (v: View) => void; dark: boolean; toggleDark: () => void; backup: () => void; restore: (file: File) => void }) {
+function Sidebar({ view, onView, dark, toggleDark, backup, restore, clearData }: { view: View; onView: (v: View) => void; dark: boolean; toggleDark: () => void; backup: () => void; restore: (file: File) => void; clearData: () => void }) {
   return (
     <aside className="hidden h-full w-[228px] shrink-0 flex-col border-r border-white/[.05] bg-[#0f1117] lg:flex">
       <div className="flex h-[68px] items-center gap-3 border-b border-white/[.05] px-5">
@@ -303,6 +303,7 @@ function Sidebar({ view, onView, dark, toggleDark, backup, restore }: { view: Vi
           <button onClick={backup} className="rounded-lg px-2 py-1.5 text-[10px] font-medium text-slate-500 transition hover:bg-white/[.05] hover:text-white">Exportar backup</button>
           <label className="cursor-pointer rounded-lg px-2 py-1.5 text-center text-[10px] font-medium text-slate-500 transition hover:bg-white/[.05] hover:text-white">Restaurar<input type="file" accept="application/json" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) restore(file); event.currentTarget.value = ""; }} /></label>
         </div>
+        <button onClick={clearData} className="mb-2 w-full rounded-lg px-2 py-1.5 text-left text-[10px] font-medium text-rose-400 transition hover:bg-rose-500/10 hover:text-rose-300">Limpar dados de demonstração</button>
         <div className="flex items-center gap-2.5 rounded-xl p-2.5 transition hover:bg-white/[.04] cursor-pointer">
           <div className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-[10px] font-semibold text-white">VC</div>
           <div className="min-w-0 flex-1"><p className="text-xs font-medium text-white">Victor</p><p className="font-mono text-[9px] text-slate-500">Administrador</p></div>
@@ -318,12 +319,19 @@ function Sidebar({ view, onView, dark, toggleDark, backup, restore }: { view: Vi
 function Dashboard({ clients, openClient, onView, createClient }: { clients: Client[]; openClient: (c: Client) => void; onView: (v: View) => void; createClient: () => void }) {
   const pipeline = clients.flatMap(c => c.deals).filter(d => !["won", "lost"].includes(d.stage));
   const total = clients.reduce((s, c) => s + c.revenue, 0);
+  const mrr = clients.filter(c => c.status === "active").reduce((sum, c) => sum + c.revenue / 12, 0);
+  const attention = clients.length ? [
+    { icon: "⚡", title: "Proposta vence amanhã", sub: "Construtech BH · R$ 64.000", action: "clients" as View },
+    { icon: "◑", title: "Lead sem resposta há 4h", sub: "Bruno Melo · Norte Engenharia", action: "leads" as View },
+    { icon: "◒", title: "Fatura vencida há 16 dias", sub: "Agro Futuro · R$ 4.800", action: "financial" as View },
+    { icon: "⊡", title: "Domínio vence em 18 dias", sub: "studioarco.design", action: "domains" as View },
+  ] : [];
   return (
     <Page>
-      <PageHeader eyebrow="TERÇA · 26 AGO 2026" title="Bom dia, Victor." description="Sua operação está saudável. 3 alertas precisam de atenção." action={<button onClick={createClient} className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 active:scale-[.98]">+ Criar novo</button>} />
+      <PageHeader eyebrow="TERÇA · 26 AGO 2026" title="Bom dia, Victor." description={clients.length ? "Sua operação está saudável. Confira os itens que precisam de atenção." : "Comece cadastrando seus primeiros clientes e oportunidades."} action={<button onClick={createClient} className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 active:scale-[.98]">+ Criar novo</button>} />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Metric label="RECEITA TOTAL" value={money(total)} detail="acumulado da carteira" trend="12,4%" />
-        <Metric label="MRR · AGO" value="R$ 38.400" detail="recorrência mensal" trend="8,1%" />
+        <Metric label="MRR · AGO" value={money(mrr)} detail="estimativa da carteira ativa" />
         <Metric label="PIPELINE ATIVO" value={money(pipeline.reduce((s,d)=>s+d.value,0))} detail={`${pipeline.length} oportunidades em curso`} />
         <Metric label="CHURN RISK" value="1 conta" detail="Agro Futuro · 87 dias sem contato" />
         <Metric label="TEMPO RESPOSTA" value="42 min" detail="média últimos 7 dias" trend="18%" />
@@ -335,7 +343,7 @@ function Dashboard({ clients, openClient, onView, createClient }: { clients: Cli
             <button onClick={() => onView("financial")} className="font-mono text-[10px] text-indigo-600 hover:text-indigo-800">VER TUDO →</button>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={financialData["6M"]} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+            <AreaChart data={clients.length ? financialData["6M"] : []} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="dRev" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6366f1" stopOpacity={0.14} /><stop offset="100%" stopColor="#6366f1" stopOpacity={0} /></linearGradient>
                 <linearGradient id="dMrr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.1} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient>
@@ -355,17 +363,12 @@ function Dashboard({ clients, openClient, onView, createClient }: { clients: Cli
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold">Atenção necessária</h2><span className="grid h-6 w-6 place-items-center rounded-full bg-amber-50 text-xs text-amber-500">✦</span></div>
           <div className="space-y-2">
-            {[
-              { icon: "⚡", title: "Proposta vence amanhã",       sub: "Construtech BH · R$ 64.000",      action: "clients"  as View },
-              { icon: "◑", title: "Lead sem resposta há 4h",      sub: "Bruno Melo · Norte Engenharia",   action: "leads"    as View },
-              { icon: "◒", title: "Fatura vencida há 16 dias",    sub: "Agro Futuro · R$ 4.800",          action: "financial"as View },
-              { icon: "⊡", title: "Domínio vence em 18 dias",    sub: "studioarco.design",                action: "domains"  as View },
-            ].map(x => (
+            {attention.map(x => (
               <button key={x.title} onClick={() => onView(x.action)} className="flex w-full items-start gap-3 rounded-xl border border-slate-100 px-3 py-2.5 text-left transition hover:border-indigo-200 hover:bg-indigo-50/40">
                 <span className="mt-0.5 text-sm">{x.icon}</span>
                 <div className="min-w-0 flex-1"><p className="text-xs font-medium text-slate-800">{x.title}</p><p className="mt-0.5 text-[11px] text-slate-400">{x.sub}</p></div>
               </button>
-            ))}
+            ))}{attention.length === 0 && <p className="py-7 text-center text-sm text-slate-400">Nenhum alerta por enquanto.</p>}
           </div>
         </Card>
       </div>
@@ -406,7 +409,7 @@ function Dashboard({ clients, openClient, onView, createClient }: { clients: Cli
           </div>
           <div className="mt-5 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 p-4 border border-indigo-100/60">
             <Label>PREVISÃO Q4</Label>
-            <p className="mt-2 text-xl font-semibold tracking-tight text-indigo-900">R$ 838.000</p>
+            <p className="mt-2 text-xl font-semibold tracking-tight text-indigo-900">{money(pipeline.reduce((sum, deal) => sum + deal.value, 0))}</p>
             <p className="mt-0.5 text-[11px] text-indigo-500/70">em negociação · fechamento médio 45 dias</p>
           </div>
         </Card>
@@ -510,7 +513,7 @@ function Leads({ onPipeline, rows: leadItems, createLead, editLead }: { onPipeli
 
 // ── Clients ────────────────────────────────────────────────────────────────────
 
-function Clients({ clients, openClient, createClient }: { clients: Client[]; openClient: (c: Client) => void; createClient: () => void }) {
+function Clients({ clients, projects, openClient, createClient }: { clients: Client[]; projects: typeof projects; openClient: (c: Client) => void; createClient: () => void }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("recent");
@@ -566,7 +569,7 @@ function Clients({ clients, openClient, createClient }: { clients: Client[]; ope
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
-function Projects() {
+function Projects({ projects, remove }: { projects: typeof projects; remove: (project: (typeof projects)[number]) => void }) {
   const stages = ["Briefing", "Design", "Desenvolvimento", "Publicado"];
   return (
     <Page>
@@ -597,7 +600,7 @@ function Projects() {
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4"><div><h2 className="text-sm font-semibold">Todos os projetos</h2><p className="mt-0.5 text-xs text-slate-400">{projects.length} projetos ativos</p></div></div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px] text-left">
-            <thead className="border-b border-slate-100"><tr>{["Projeto", "Cliente", "Tipo", "Etapa", "Prazo", "Progresso"].map(h => <th key={h} className="px-5 py-3 font-mono text-[10px] font-medium tracking-wider text-slate-400">{h}</th>)}</tr></thead>
+            <thead className="border-b border-slate-100"><tr>{["Projeto", "Cliente", "Tipo", "Etapa", "Prazo", "Progresso", ""].map(h => <th key={h} className="px-5 py-3 font-mono text-[10px] font-medium tracking-wider text-slate-400">{h}</th>)}</tr></thead>
             <tbody>
               {projects.map(p => (
                 <tr key={p.name} className="border-b border-slate-50 last:border-0 transition hover:bg-slate-50/60">
@@ -607,6 +610,7 @@ function Projects() {
                   <td className="px-5"><span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-[10px] text-slate-500">{p.stage}</span></td>
                   <td className="px-5 font-mono text-xs text-slate-400">{p.due}</td>
                   <td className="px-5"><div className="flex items-center gap-3"><div className="h-1.5 w-24 rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${p.progress}%`, background: p.color }} /></div><span className="font-mono text-[10px] text-slate-500">{p.progress}%</span></div></td>
+                  <td className="px-5 text-right"><button onClick={() => { if (window.confirm(`Excluir o projeto ${p.name}?`)) remove(p); }} className="text-xs font-medium text-rose-500 hover:text-rose-700">Excluir</button></td>
                 </tr>
               ))}
             </tbody>
@@ -675,12 +679,12 @@ function Messages() {
 
 // ── Financial ─────────────────────────────────────────────────────────────────
 
-function Financial() {
+function Financial({ clients, invoices, removeInvoice }: { clients: Client[]; invoices: typeof invoices; removeInvoice: (invoice: (typeof invoices)[number]) => void }) {
   const [range, setRange] = useState<Range>("6M");
-  const data = financialData[range];
-  const periodRevenue = data.reduce((s,d) => s+d.revenue, 0);
-  const lastMrr = data[data.length-1]?.mrr ?? 0;
-  const maxClientRevenue = Math.max(...initialClients.map(c => c.revenue));
+  const data = clients.length ? financialData[range] : [];
+  const periodRevenue = clients.length ? data.reduce((s,d)=>s+d.revenue,0) : 0;
+  const lastMrr = clients.length ? data[data.length-1]?.mrr ?? 0 : 0;
+  const maxClientRevenue = Math.max(1, ...clients.map(c => c.revenue));
 
   const invoiceStatus = { pago: "bg-emerald-50 text-emerald-700", pendente: "bg-slate-100 text-slate-600", vencendo: "bg-amber-50 text-amber-700", atrasado: "bg-rose-50 text-rose-700" };
 
@@ -690,8 +694,8 @@ function Financial() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-5">
         <Metric label="RECEITA NO PERÍODO" value={money(periodRevenue)} detail="período selecionado" trend="14,2%" />
         <Metric label="MRR ATUAL" value={money(lastMrr)} detail="recorrência mensal" trend="8,1%" />
-        <Metric label="FATURAS PENDENTES" value="R$ 45.800" detail="4 cobranças em aberto" />
-        <Metric label="INADIMPLÊNCIA" value="R$ 4.800" detail="1 fatura em atraso" />
+        <Metric label="FATURAS PENDENTES" value={money(invoices.filter(inv => inv.status !== "pago").reduce((sum, inv) => sum + inv.amount, 0))} detail={`${invoices.filter(inv => inv.status !== "pago").length} cobranças em aberto`} />
+        <Metric label="INADIMPLÊNCIA" value={money(invoices.filter(inv => inv.status === "atrasado").reduce((sum, inv) => sum + inv.amount, 0))} detail={`${invoices.filter(inv => inv.status === "atrasado").length} faturas em atraso`} />
       </div>
 
       {/* Main chart */}
@@ -729,7 +733,7 @@ function Financial() {
         <Card className="p-6">
           <h2 className="text-sm font-semibold mb-5">Receita por cliente</h2>
           <div className="space-y-3.5">
-            {initialClients.filter(c => c.revenue > 0).sort((a,b) => b.revenue-a.revenue).map(c => (
+            {clients.filter(c => c.revenue > 0).sort((a,b) => b.revenue-a.revenue).map(c => (
               <div key={c.id}>
                 <div className="mb-1.5 flex justify-between text-xs">
                   <div className="flex items-center gap-2"><Avatar initials={c.avatar} size="xs" /><span className="text-slate-600">{c.company}</span></div>
@@ -737,7 +741,7 @@ function Financial() {
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${(c.revenue/maxClientRevenue)*100}%` }} /></div>
               </div>
-            ))}
+            ))}{clients.filter(c => c.revenue > 0).length === 0 && <p className="py-8 text-center text-sm text-slate-400">Nenhuma receita cadastrada.</p>}
           </div>
         </Card>
 
@@ -745,18 +749,19 @@ function Financial() {
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 p-5">
             <div><h2 className="text-sm font-semibold">Faturas</h2><p className="mt-0.5 text-xs text-slate-400">Cobranças ativas e historico</p></div>
-            <button className="font-mono text-[10px] text-indigo-600">VER TODAS →</button>
+            <span className="font-mono text-[10px] text-slate-400">{invoices.length} registros</span>
           </div>
           {invoices.map((inv, i) => (
             <div key={i} className="flex items-center gap-4 border-b border-slate-50 px-5 py-3.5 last:border-0">
               <div className="min-w-0 flex-1"><p className="text-xs font-medium text-slate-700">{inv.client}</p><p className="mt-0.5 font-mono text-[10px] text-slate-400">{inv.id} · vence {inv.due}</p></div>
               <p className="font-mono text-xs font-semibold text-slate-800">{money(inv.amount)}</p>
               <span className={`rounded-full px-2.5 py-0.5 font-mono text-[9px] ${invoiceStatus[inv.status]}`}>{inv.status.toUpperCase()}</span>
+              <button onClick={() => { if (window.confirm(`Excluir a fatura ${inv.id}?`)) removeInvoice(inv); }} className="text-xs font-medium text-rose-500 hover:text-rose-700">×</button>
             </div>
-          ))}
+          ))}{invoices.length === 0 && <p className="px-5 py-8 text-center text-sm text-slate-400">Nenhuma fatura cadastrada.</p>}
           <div className="border-t border-slate-100 bg-slate-50/60 p-5">
             <div className="grid grid-cols-2 gap-4">
-              {[["PREVISTO SETEMBRO", "R$ 62.800"], ["RECEITA ANUAL PROJ.", "R$ 520k"]].map(([l,v]) => (
+              {[["PREVISTO SETEMBRO", money(invoices.filter(inv => inv.status !== "pago").reduce((sum, inv) => sum + inv.amount, 0))], ["RECEITA ANUAL PROJ.", money(clients.reduce((sum, client) => sum + client.revenue, 0))]].map(([l,v]) => (
                 <div key={l}><Label>{l}</Label><p className="mt-1.5 text-base font-semibold tracking-tight">{v}</p></div>
               ))}
             </div>
@@ -1001,22 +1006,22 @@ function CalendarView({ events, createEvent }: { events: typeof calendarEvents; 
 
 // ── Domains ────────────────────────────────────────────────────────────────────
 
-function Domains() {
+function Domains({ domains, remove, renew }: { domains: typeof domainsData; remove: (domain: (typeof domainsData)[number]) => void; renew: (domain: (typeof domainsData)[number]) => void }) {
   const expiryCfg = (d: number) => d <= 30 ? { cls: "bg-rose-50 text-rose-700", label: "Crítico" } : d <= 90 ? { cls: "bg-amber-50 text-amber-700", label: "Atenção" } : { cls: "bg-slate-100 text-slate-500", label: "Ok" };
   return (
     <Page>
       <PageHeader eyebrow="ATIVOS DIGITAIS" title="Domínios" description="Registros, renovações e certificados SSL dos seus clientes." action={<button className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white">+ Adicionar</button>} />
       <div className="grid gap-3 sm:grid-cols-3 mb-5">
-        <Metric label="ATIVOS MONITORADOS" value="6" detail="domínios em carteira" />
-        <Metric label="VENCENDO EM BREVE" value="2" detail="menos de 90 dias" />
-        <Metric label="SEM SSL" value="1" detail="renovação necessária" />
+        <Metric label="ATIVOS MONITORADOS" value={`${domains.length}`} detail="domínios em carteira" />
+        <Metric label="VENCENDO EM BREVE" value={`${domains.filter(domain => domain.expires <= 90).length}`} detail="menos de 90 dias" />
+        <Metric label="SEM SSL" value={`${domains.filter(domain => !domain.ssl).length}`} detail="renovação necessária" />
       </div>
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-left">
             <thead className="border-b border-slate-100"><tr>{["Domínio", "Cliente", "Expira em", "Status", "SSL", "Registrador", ""].map(h => <th key={h} className="px-5 py-3 font-mono text-[10px] font-medium tracking-wider text-slate-400">{h}</th>)}</tr></thead>
             <tbody>
-              {domainsData.map((d, i) => {
+              {domains.map((d, i) => {
                 const cfg = expiryCfg(d.expires);
                 return (
                   <tr key={i} className="border-b border-slate-50 last:border-0 transition hover:bg-slate-50/80">
@@ -1026,7 +1031,7 @@ function Domains() {
                     <td className="px-5"><span className={`rounded-full px-2.5 py-1 font-mono text-[9px] ${cfg.cls}`}>{cfg.label.toUpperCase()}</span></td>
                     <td className="px-5">{d.ssl ? <span className="font-mono text-[10px] text-emerald-600">✓ Ativo</span> : <span className="font-mono text-[10px] text-rose-600">✕ Inativo</span>}</td>
                     <td className="px-5 font-mono text-xs text-slate-400">{d.registrar}</td>
-                    <td className="px-5 text-right"><button className="rounded-lg border border-slate-200 px-2.5 py-1 font-mono text-[10px] text-slate-500 transition hover:border-indigo-300 hover:text-indigo-600">Renovar</button></td>
+                    <td className="px-5 text-right"><div className="flex justify-end gap-3"><button onClick={() => renew(d)} className="rounded-lg border border-slate-200 px-2.5 py-1 font-mono text-[10px] text-slate-500 transition hover:border-indigo-300 hover:text-indigo-600">Renovar</button><button onClick={() => { if (window.confirm(`Excluir ${d.domain}?`)) remove(d); }} className="text-xs font-medium text-rose-500 hover:text-rose-700">Excluir</button></div></td>
                   </tr>
                 );
               })}
@@ -1078,7 +1083,7 @@ function Pipeline({ clients }: { clients: Client[] }) {
 
 // ── Client Modal ──────────────────────────────────────────────────────────────
 
-function ClientModal({ client, close, save, edit }: { client: Client; close: () => void; save: (next: Client) => void; edit: () => void }) {
+function ClientModal({ client, projects, invoices, close, save, edit }: { client: Client; projects: typeof projects; invoices: typeof invoices; close: () => void; save: (next: Client) => void; edit: () => void }) {
   const [tab, setTab] = useState("Visão geral");
   const [noteText, setNoteText] = useState("");
   const [notes, setNotes] = useState(client.notes);
@@ -1389,6 +1394,15 @@ export default function App() {
   const [events, setEvents] = useState<typeof calendarEvents>(() => {
     try { return JSON.parse(localStorage.getItem("crm-calendar-events") || "null") || calendarEvents; } catch { return calendarEvents; }
   });
+  const [projectItems, setProjectItems] = useState<typeof projects>(() => {
+    try { return JSON.parse(localStorage.getItem("crm-projects") || "null") || projects; } catch { return projects; }
+  });
+  const [invoiceItems, setInvoiceItems] = useState<typeof invoices>(() => {
+    try { return JSON.parse(localStorage.getItem("crm-invoices") || "null") || invoices; } catch { return invoices; }
+  });
+  const [domainItems, setDomainItems] = useState<typeof domainsData>(() => {
+    try { return JSON.parse(localStorage.getItem("crm-domains") || "null") || domainsData; } catch { return domainsData; }
+  });
   const updateClients = (next: Client[]) => {
     setClients(next);
     localStorage.setItem("crm-clients", JSON.stringify(next));
@@ -1398,12 +1412,15 @@ export default function App() {
   useEffect(() => { localStorage.setItem("crm-tasks", JSON.stringify(tasks)); }, [tasks]);
   useEffect(() => { localStorage.setItem("crm-leads", JSON.stringify(leads)); }, [leads]);
   useEffect(() => { localStorage.setItem("crm-calendar-events", JSON.stringify(events)); }, [events]);
+  useEffect(() => { localStorage.setItem("crm-projects", JSON.stringify(projectItems)); }, [projectItems]);
+  useEffect(() => { localStorage.setItem("crm-invoices", JSON.stringify(invoiceItems)); }, [invoiceItems]);
+  useEffect(() => { localStorage.setItem("crm-domains", JSON.stringify(domainItems)); }, [domainItems]);
   const saveClient = (next: Client) => {
     updateClients(clients.map(current => current.id === next.id ? next : current));
     setClient(next);
   };
   const backup = () => {
-    const data = { version: 1, exportedAt: new Date().toISOString(), clients, inboxNotes, tasks, leads, events, theme: dark ? "dark" : "light" };
+    const data = { version: 2, exportedAt: new Date().toISOString(), clients, inboxNotes, tasks, leads, events, projectItems, invoiceItems, domainItems, theme: dark ? "dark" : "light" };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
     const link = document.createElement("a");
     link.href = url; link.download = `crm-figma-backup-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url);
@@ -1419,6 +1436,9 @@ export default function App() {
         if (Array.isArray(data.tasks)) setTasks(data.tasks);
         if (Array.isArray(data.leads)) setLeads(data.leads);
         if (Array.isArray(data.events)) setEvents(data.events);
+        if (Array.isArray(data.projectItems)) setProjectItems(data.projectItems);
+        if (Array.isArray(data.invoiceItems)) setInvoiceItems(data.invoiceItems);
+        if (Array.isArray(data.domainItems)) setDomainItems(data.domainItems);
         if (data.theme === "dark" || data.theme === "light") setDark(data.theme === "dark");
         setClient(null);
       } catch { window.alert("Não foi possível restaurar este backup."); }
@@ -1431,24 +1451,24 @@ export default function App() {
       case "dashboard": return <Dashboard {...props} onView={setView} createClient={() => setCreatingClient(true)} />;
       case "inbox":     return <Inbox notes={inboxNotes} setNotes={setInboxNotes} onView={setView} createTask={() => setCreatingTask(true)} />;
       case "leads":     return <Leads onPipeline={() => setView("pipeline")} rows={leads} createLead={() => setCreatingLead(true)} editLead={setEditingLead} />;
-      case "clients":   return <Clients {...props} createClient={() => setCreatingClient(true)} />;
-      case "projects":  return <Projects />;
+      case "clients":   return <Clients {...props} projects={projectItems} createClient={() => setCreatingClient(true)} />;
+      case "projects":  return <Projects projects={projectItems} remove={project => setProjectItems(current => current.filter(item => item !== project))} />;
       case "messages":  return <Messages />;
-      case "financial": return <Financial />;
+      case "financial": return <Financial clients={clients} invoices={invoiceItems} removeInvoice={invoice => setInvoiceItems(current => current.filter(item => item !== invoice))} />;
       case "analytics": return <Analytics />;
       case "goals":     return <Goals />;
       case "tasks":     return <Tasks items={tasks} setItems={setTasks} createTask={() => setCreatingTask(true)} />;
       case "calendar":  return <CalendarView events={events} createEvent={() => setCreatingEvent(true)} />;
-      case "domains":   return <Domains />;
+      case "domains":   return <Domains domains={domainItems} remove={domain => setDomainItems(current => current.filter(item => item !== domain))} renew={domain => setDomainItems(current => current.map(item => item === domain ? { ...item, expires: 365, ssl: true } : item))} />;
       case "pipeline":  return <Pipeline clients={clients} />;
       default:          return null;
     }
   };
   return (
     <div className={`app-root flex h-full bg-[#f5f6f8] text-slate-900 ${dark ? "crm-dark" : ""}`}>
-      <Sidebar view={view} onView={setView} dark={dark} toggleDark={() => setDark(current => !current)} backup={backup} restore={restore} />
+      <Sidebar view={view} onView={setView} dark={dark} toggleDark={() => setDark(current => !current)} backup={backup} restore={restore} clearData={() => { if (window.confirm("Apagar todos os dados de demonstração? Esta ação não pode ser desfeita.")) { updateClients([]); setProjectItems([]); setInvoiceItems([]); setDomainItems([]); setLeads([]); setTasks([]); setInboxNotes([]); setEvents([]); setClient(null); } }} />
       <div className="flex min-w-0 flex-1 flex-col">{render()}</div>
-      {client && <ClientModal client={client} close={() => setClient(null)} save={saveClient} edit={() => setEditingClient(client)} />}
+      {client && <ClientModal client={client} projects={projectItems} invoices={invoiceItems} close={() => setClient(null)} save={saveClient} edit={() => setEditingClient(client)} />}
       {creatingClient && <ClientEditor close={() => setCreatingClient(false)} create={next => updateClients([...clients, next])} />}
       {creatingLead && <LeadEditor close={() => setCreatingLead(false)} create={next => setLeads(current => [next, ...current])} />}
       {editingClient && <ClientEditEditor client={editingClient} close={() => setEditingClient(null)} save={saveClient} remove={() => { updateClients(clients.filter(current => current.id !== editingClient.id)); setClient(null); }} />}
